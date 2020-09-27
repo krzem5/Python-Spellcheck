@@ -10,44 +10,41 @@ def read_dict(fp):
 
 
 def correct(dct,s):
-	def P(word, N=sum(dct.values())):
-		"Probability of `word`."
-		return dct[word] / N
-	def correction(word):
-		"Most probable spelling correction for word."
-		return max(candidates(word), key=P)
-	def candidates(word):
-		"Generate possible spelling corrections for word."
-		return (known([word]) or known(edits1(word)) or known(edits2(word)) or [word])
-
-	def known(words):
-		"The subset of `words` that appear in the dictionary of dct."
-		return set(w for w in words if w in dct)
-
-	def edits1(word):
-		"All edits that are one edit away from `word`."
-		letters='abcdefghijklmnopqrstuvwxyz'
-		splits=[(word[:i], word[i:]) for i in range(len(word) + 1)]
-		deletes=[L + R[1:] for L, R in splits if R if L + R[1:] in dct]
-		transposes=[L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1 if L + R[1] + R[0] + R[2:] in dct]
-		replaces=[L + c + R[1:] for L, R in splits if R for c in letters if L + c + R[1:] in dct]
-		inserts=[L + c + R for L, R in splits for c in letters if L + c + R in dct]
-		return deletes + transposes + replaces + inserts
-
-	def edits2(word):
-		"All edits that are two edits away from `word`."
-		return list(e2 for e1 in edits1(word) for e2 in edits1(e1))
-
-
-
-	for k in re.findall(r"\w+",s):
-		word=k.lower()
-		ln=sum(dct.values())
-		e=max([word]+edits1(word)+edits2(word),key=lambda k:(dct[word]/ln if word in dct else 0))
-		print(f"'{k}' => '{e}'")
-	return s
+	def _repalce(m):
+		def _similar(k):
+			o=[]
+			for i in range(0,len(k)+1):
+				if (k[:i]+k[i+1:] in dct):
+					o+=[k[:i]+k[i+1:]]
+				if (len(k)>i+1 and k[:i]+k[i+1]+k[i]+k[i+2:] in dct):
+					o+=[k[:i]+k[i+1]+k[i]+k[i+2:]]
+				for c in "abcdefghijklmnopqrstuvwxyz":
+					if (k[:i]+c+k[i:] in dct):
+						o+=[k[:i]+c+k[i:]]
+					if (k[:i]+c+k[i+1:] in dct):
+						o+=[k[:i]+c+k[i+1:]]
+			return o
+		k=m.group(0).lower()
+		if (k in dct):
+			return m.group(0)
+		else:
+			b=k
+			bp=0
+			for e in _similar(k):
+				if (dct[e]>bp):
+					b=e
+				for se in _similar(e):
+					if (dct[se]>bp):
+						b=se
+			uc=sum([(1 if c.isupper() else 0) for c in m.group(0)])
+			if (uc>=len(m.group(0))/2):
+				return b.upper()
+			if (m.group(0)[0].isupper()):
+				return b.title()
+			return b
+	return re.sub(r"\w+",_repalce,s)
 
 
 
 dct=read_dict("en.json")
-print(correct(dct,"Hi!"))
+print(correct(dct,"where are these Peoplse!"))
